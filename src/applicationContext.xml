@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop" 
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans   
+	http://www.springframework.org/schema/beans/spring-beans-3.1.xsd  
+	http://www.springframework.org/schema/context   
+	http://www.springframework.org/schema/context/spring-context-3.1.xsd  
+	http://www.springframework.org/schema/aop   
+	http://www.springframework.org/schema/aop/spring-aop-3.1.xsd  
+	http://www.springframework.org/schema/tx   
+	http://www.springframework.org/schema/tx/spring-tx-3.1.xsd
+	http://www.springframework.org/schema/task
+   	http://www.springframework.org/schema/task/spring-task-3.1.xsd">
+   	
+	
+	<context:property-placeholder location="classpath:configure.properties"/>
+	<!-- 写数据源 -->
+	<bean id="dataSourceRW" class="com.mchange.v2.c3p0.ComboPooledDataSource"
+		destroy-method="close">
+		<property name="driverClass" value="${jdbcDriverClassRW}" />
+		<property name="jdbcUrl"
+			value="${jdbcUrlRW}?useUnicode=true&amp;characterEncoding=utf-8&amp;allowMultiQueries=true" />
+		<property name="user" value="${jdbcUserRW}" />
+		<property name="password" value="${jdbcPasswordRW}" />
+        <property name="minPoolSize"> 
+	   	     <value>20</value>
+	    </property>
+	    <property name="maxPoolSize"> 
+	    	 <value>800</value> 
+	    </property> 
+	    <property name="initialPoolSize"> 
+	    	 <value>20</value> 
+	    </property> 
+	    <property name="maxIdleTime"> 
+	         <value>600</value> 
+	    </property> 
+	    <property name="acquireIncrement"> 
+	     	 <value>5</value> 
+	    </property> 
+	    <property name="acquireRetryAttempts"> 
+	     	 <value>30</value> 
+	    </property> 
+	    <property name="acquireRetryDelay"> 
+	     	 <value>1000</value> 
+	    </property> 
+	    <property name="testConnectionOnCheckin"> 
+	     	 <value>false</value> 
+	    </property>
+	    <property name="automaticTestTable"> 
+	     	 <value>t_c3p0</value> 
+	    </property> 
+	    <property name="idleConnectionTestPeriod"> 
+	     	 <value>60</value> 
+	    </property>
+	   <property name="checkoutTimeout"> 
+	     	 <value>6000</value> 
+	    </property> 
+	</bean>
+	<!-- 读数据源 -->
+	<bean id="dataSourceR" class="com.mchange.v2.c3p0.ComboPooledDataSource"
+		destroy-method="close">
+		<property name="driverClass" value="${jdbcDriverClassR}" />
+		<property name="jdbcUrl"
+			value="${jdbcUrlR}?useUnicode=true&amp;characterEncoding=utf-8&amp;allowMultiQueries=true" />
+		<property name="user" value="${jdbcUserR}" />
+		<property name="password" value="${jdbcPasswordR}" />
+        <property name="minPoolSize"> 
+	   	     <value>20</value>
+	    </property>
+	    <property name="maxPoolSize"> 
+	    	 <value>800</value> 
+	    </property> 
+	    <property name="initialPoolSize"> 
+	    	 <value>20</value> 
+	    </property> 
+	    <property name="maxIdleTime"> 
+	         <value>600</value> 
+	    </property> 
+	    <property name="acquireIncrement"> 
+	     	 <value>5</value> 
+	    </property> 
+	    <property name="acquireRetryAttempts"> 
+	     	 <value>30</value> 
+	    </property> 
+	    <property name="acquireRetryDelay"> 
+	     	 <value>1000</value> 
+	    </property> 
+	    <property name="testConnectionOnCheckin"> 
+	     	 <value>false</value> 
+	    </property>
+	    <property name="automaticTestTable"> 
+	     	 <value>t_c3p0</value> 
+	    </property> 
+	    <property name="idleConnectionTestPeriod"> 
+	     	 <value>60</value> 
+	    </property>
+	   <property name="checkoutTimeout"> 
+	     	 <value>6000</value> 
+	    </property> 
+	</bean>
+	<!-- 动态数据源 -->
+	<bean id="dynamicDataSource" class="com.chainway.ivc.util.readingAndwrittingSeparation.DynamicDataSource">
+		<!-- 通过key-value关联数据源 -->
+		<property name="targetDataSources">
+			<map>
+				<entry value-ref="dataSourceRW" key="dataSourceKeyRW"></entry>
+				<entry value-ref="dataSourceR" key="dataSourceKeyR"></entry>
+			</map>
+		</property>
+		<property name="defaultTargetDataSource" ref="dataSourceRW" />
+	</bean>
+	
+	<!-- 配置AOP -->
+	<aop:aspectj-autoproxy />
+
+	<!-- 配置sqlSessionFactory -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dynamicDataSource"></property>
+		<property name="configLocation" value="classpath:mybatis-config.xml"></property>
+	</bean>
+
+	<!-- 配置事务 -->
+	<bean id="txManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dynamicDataSource"></property>
+	</bean>
+
+	<!--使用基于注解方式配置事务 -->
+	<tx:annotation-driven transaction-manager="txManager" />
+
+	<!-- 开启自动扫描 -->
+	<context:annotation-config />
+	<context:component-scan base-package="com.chainway"
+		use-default-filters="false">
+		<context:include-filter type="annotation"
+			expression="org.springframework.stereotype.Service" />
+		<context:include-filter type="annotation"
+			expression="org.springframework.stereotype.Repository" />
+		<context:include-filter type="annotation"
+			expression="org.springframework.stereotype.Component" />
+	</context:component-scan>
+
+	<task:executor id="executor" pool-size="1" />
+	<task:scheduler id="scheduler" pool-size="1" />
+	<task:annotation-driven executor="executor" scheduler="scheduler" />
+	
+</beans>
